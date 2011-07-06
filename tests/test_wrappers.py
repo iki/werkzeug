@@ -4,7 +4,7 @@
     ~~~~~~~~~~~~~~~~~~~~~~
 
 
-    :copyright: (c) 2010 by the Werkzeug Team, see AUTHORS for more details.
+    :copyright: (c) 2011 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD license.
 """
 import pickle
@@ -94,6 +94,15 @@ def test_base_request():
     ## assert response['form_as_list'] == [('foo', ['blub hehe']), ('blah', ['42'])]
     assert_environ(response['environ'], 'POST')
 
+    # patch requests with form data
+    response = client.patch('/?blub=blah', data='foo=blub+hehe&blah=42',
+                            content_type='application/x-www-form-urlencoded')
+    assert response['args'] == MultiDict([('blub', 'blah')])
+    assert response['args_as_list'] == [('blub', ['blah'])]
+    assert response['form'] == MultiDict([('foo', 'blub hehe'), ('blah', '42')])
+    assert response['data'] == ''
+    assert_environ(response['environ'], 'PATCH')
+
     # post requests with json data
     json = '{"foo": "bar", "blub": "blah"}'
     response = client.post('/?a=b', data=json, content_type='application/json')
@@ -108,10 +117,6 @@ def test_access_route():
         'X-Forwarded-For': '192.168.1.2, 192.168.1.1'
     })
     req.environ['REMOTE_ADDR'] = '192.168.1.3'
-    req.is_behind_proxy = True
-    assert req.access_route == ['192.168.1.2', '192.168.1.1']
-    assert req.remote_addr == '192.168.1.2'
-    req.is_behind_proxy = False
     assert req.access_route == ['192.168.1.2', '192.168.1.1']
     assert req.remote_addr == '192.168.1.3'
 
@@ -640,3 +645,10 @@ def test_response_headers_passthrough():
     headers = Headers()
     resp = Response(headers=headers)
     assert resp.headers is headers
+
+
+def test_response_304_no_content_length():
+    """Ensure that 304 responses don't get an automatic content length"""
+    resp = Response('Test', status=304)
+    env = create_environ()
+    assert 'content-length' not in resp.get_wsgi_headers(env)

@@ -7,14 +7,14 @@
     them are used by the request and response wrappers but especially for
     middleware development it makes sense to use them without the wrappers.
 
-    :copyright: (c) 2010 by the Werkzeug Team, see AUTHORS for more details.
+    :copyright: (c) 2011 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
 import re
 import os
 import sys
 from time import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from werkzeug._internal import _decode_unicode, \
      _iter_modules, _ExtendedCookie, _ExtendedMorsel, \
@@ -341,7 +341,7 @@ def unescape(s):
     return _entity_re.sub(handle_match, s)
 
 
-def parse_cookie(header, charset='utf-8', errors='ignore',
+def parse_cookie(header, charset='utf-8', errors='replace',
                  cls=None):
     """Parse a cookie.  Either from a string or WSGI environ.
 

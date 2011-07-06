@@ -5,7 +5,9 @@ Version 0.7
 -----------
 (Last pre 1.0 release, release date to be announced)
 
-- improved func:`url_decode` and :func:`url_encode` performance.
+- Add support for python-libmemcached to the Werkzeug cache abstraction
+  layer.
+- improved :func:`url_decode` and :func:`url_encode` performance.
 - fixed an issue where the SharedDataMiddleware could cause an
   internal server error on weird paths when loading via pkg_resources.
 - fixed an URL generation bug that caused URLs to be invalid if a
@@ -63,6 +65,21 @@ Version 0.7
 - `call_on_close` now can be used as a decorator.
 - support for redis as cache backend.
 - Added `BaseRequest.scheme`.
+- support for the RFC 5789 PATCH method.
+- new custom routing parser and better ordering.
+- removed support for `is_behind_proxy`.  Use a WSGI middleware
+  instead that rewrites the `REMOTE_ADDR` according to your setup.
+  Also see the :class:`werkzeug.contrib.fixers.ProxyFix` for
+  a drop-in replacement.
+- added cookie forging support to the test client.
+- added support for host based matching in the routing system.
+- switched from the default 'ignore' to the better 'replace'
+  unicode error handling mode.
+- The builtin server now adds a function named 'werkzeug.server.shutdown'
+  into the WSGI env to initiate a shutdown.  This currently only works
+  in Python 2.6 and later.
+- Headers are now assumed to be latin1 for better compatibility with
+  Python 3 once we have support.
 
 Version 0.6.2
 -------------

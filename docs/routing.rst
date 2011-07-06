@@ -103,24 +103,6 @@ Here a list of converters that come with Werkzeug:
 
 .. autoclass:: FloatConverter
 
-.. admonition:: Important
-
-    Werkzeug evaluates converter arguments as if they were Python method calls.
-    Thus, you should **never** create rules from user-submitted data since
-    they could insert arbitrary Python code in the parameters part.
-
-    As a matter of fact, this is a legal definition and sets *fixed_digits* to 2:
-
-    .. sourcecode:: python
-
-        url_map = Map([
-            Rule('/picture/<int(fixed_digits=1 + 1):id>.png',
-                 endpoint='view_image')
-        ])
-
-    However, evaluating Python expressions is currently an implementation
-    detail and might be unavailable in the future.
-
 
 Maps, Rules and Adapters
 ========================
@@ -197,3 +179,25 @@ example::
     ], converters={'bool': BooleanConverter})
 
 If you want that converter to be the default converter, name it ``'default'``.
+
+Host Matching
+=============
+
+.. versionadded:: 0.7
+
+Starting with Werkzeug 0.7 it's also possible to do matching on the whole
+host names instead of just the subdomain.  To enable this feature you need
+to pass ``host_matching=True`` to the :class:`Map` constructor and provide
+the `host` argument to all routes::
+
+    url_map = Map([
+        Rule('/', endpoint='www_index', host='www.example.com'),
+        Rule('/', endpoint='help_index', host='help.example.com')
+    ], host_matching=True)
+
+Variable parts are of course also possible in the host section::
+
+    url_map = Map([
+        Rule('/', endpoint='www_index', host='www.example.com'),
+        Rule('/', endpoint='user_index', host='<user>.example.com')
+    ], host_matching=True)

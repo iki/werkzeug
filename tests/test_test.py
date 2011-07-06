@@ -9,7 +9,7 @@
 
     Who will test the test?
 
-    :copyright: (c) 2010 by the Werkzeug Team, see AUTHORS for more details.
+    :copyright: (c) 2011 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
 
@@ -85,6 +85,14 @@ def multi_value_post_app(environ, start_response):
     assert req.form.getlist('field') == ['val1', 'val2'], req.form.getlist('field')
     response = Response('ok')
     return response(environ, start_response)
+
+
+def test_cookie_forging():
+    """Test that cookie forging works."""
+    c = Client(cookie_app)
+    c.set_cookie('localhost', 'foo', 'bar')
+    appiter, code, headers = c.open()
+    assert list(appiter) == ['foo=bar']
 
 
 def test_set_cookie_app():
