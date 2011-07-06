@@ -14,6 +14,7 @@ import sys
 import inspect
 import traceback
 import codecs
+import logging
 from tokenize import TokenError
 from werkzeug.utils import cached_property, escape
 from werkzeug.debug.console import Console
@@ -427,12 +428,13 @@ class Frame(object):
             except Exception:
                 # we munch the exception so that we don't cause troubles
                 # if the loader is broken.
-                pass
+                logging.error('cannot get source', exc_info=1)
 
         if source is None:
             try:
                 f = file(self.filename)
             except IOError:
+                logging.error('cannot open source file: %s' % self.filename)
                 return []
             try:
                 source = f.read()

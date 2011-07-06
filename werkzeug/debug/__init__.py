@@ -8,6 +8,7 @@
     :copyright: (c) 2010 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
+import logging
 import mimetypes
 from os.path import join, dirname, basename, isfile
 from werkzeug.wrappers import BaseRequest as Request, BaseResponse as Response
@@ -150,6 +151,8 @@ class DebuggedApplication(object):
                 return Response(f.read(), mimetype=mimetype)
             finally:
                 f.close()
+        else:
+            logging.error('cannot find resource: %s' % filename)
         return Response('Not Found', status=404)
 
     def __call__(self, environ, start_response):
