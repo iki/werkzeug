@@ -409,7 +409,7 @@ class RuleTemplateFactory(RuleFactory):
         for rulefactory in self.rules:
             for rule in rulefactory.get_rules(map):
                 new_defaults = subdomain = None
-                if rule.defaults is not None:
+                if rule.defaults:
                     new_defaults = {}
                     for key, value in rule.defaults.iteritems():
                         if isinstance(value, basestring):
@@ -569,7 +569,7 @@ class Rule(RuleFactory):
         self.endpoint = endpoint
         self.redirect_to = redirect_to
 
-        if defaults is not None:
+        if defaults:
             self.arguments = set(map(str, defaults))
         else:
             self.arguments = set()
@@ -579,7 +579,7 @@ class Rule(RuleFactory):
         """Return an unbound copy of this rule.  This can be useful if you
         want to reuse an already bound URL for another map."""
         defaults = None
-        if self.defaults is not None:
+        if self.defaults:
             defaults = dict(self.defaults)
         return Rule(self.rule, defaults, self.subdomain, self.methods,
                     self.build_only, self.endpoint, self.strict_slashes,
@@ -692,7 +692,7 @@ class Rule(RuleFactory):
                     except ValidationError:
                         return
                     result[str(name)] = value
-                if self.defaults is not None:
+                if self.defaults:
                     result.update(self.defaults)
 
                 if self.alias and self.map.redirect_defaults:
@@ -738,7 +738,7 @@ class Rule(RuleFactory):
 
         :internal:
         """
-        return not self.build_only and self.defaults is not None and \
+        return not self.build_only and self.defaults and \
                self.endpoint == rule.endpoint and self != rule and \
                self.arguments == rule.arguments
 
@@ -747,21 +747,25 @@ class Rule(RuleFactory):
 
         :internal:
         """
-        if method is not None:
-            if self.methods is not None and method not in self.methods:
+        # if a method was given explicitly and that method is not supported
+        # by this rule, this rule is not suitable.
+        if method is not None and self.methods is not None \
+           and method not in self.methods:
+            return False
+
+        defaults = self.defaults or ()
+
+        # all arguments required must be either in the defaults dict or
+        # the value dictionary otherwise it's not suitable
+        for key in self.arguments:
+            if key not in defaults and key not in values:
                 return False
 
-        valueset = set(values)
-
-        for key in self.arguments - set(self.defaults or ()):
-            if key not in values:
-                return False
-
-        if self.arguments.issubset(valueset):
-            if self.defaults is None:
-                return True
-            for key, value in self.defaults.iteritems():
-                if value != values[key]:
+        # in case defaults are given we ensure taht either the value was
+        # skipped or the value is the same as the default value.
+        if defaults:
+            for key, value in defaults.iteritems():
+                if key in values and value != values[key]:
                     return False
 
         return True
@@ -1368,14 +1372,13 @@ class MapAdapter(object):
             if rule.methods is not None and method not in rule.methods:
                 have_match_for.update(rule.methods)
                 continue
+
             if self.map.redirect_defaults:
-                for r in self.map._rules_by_endpoint[rule.endpoint]:
-                    if r.provides_defaults_for(rule) and \
-                       r.suitable_for(rv, method):
-                        rv.update(r.defaults)
-                        domain_part, path = r.build(rv)
-                        raise RequestRedirect(self.make_redirect_url(
-                            path, query_args, domain_part=domain_part))
+                redirect_url = self.get_default_redirect(rule, method, rv,
+                                                         query_args)
+                if redirect_url is not None:
+                    raise RequestRedirect(redirect_url)
+
             if rule.redirect_to is not None:
                 if isinstance(rule.redirect_to, basestring):
                     def _handle_match(match):
@@ -1391,10 +1394,12 @@ class MapAdapter(object):
                     self.server_name,
                     self.script_name
                 ), redirect_url)))
+
             if return_rule:
                 return rule, rv
             else:
                 return rule.endpoint, rv
+
         if have_match_for:
             raise MethodNotAllowed(valid_methods=list(have_match_for))
         raise NotFound()
@@ -1442,6 +1447,26 @@ class MapAdapter(object):
         if subdomain is None:
             subdomain = self.subdomain
         return (subdomain and subdomain + '.' or '') + self.server_name
+
+    def get_default_redirect(self, rule, method, values, query_args):
+        """A helper that returns the URL to redirect to if it finds one.
+        This is used for default redirecting only.
+
+        :internal:
+        """
+        assert self.map.redirect_defaults
+        for r in self.map._rules_by_endpoint[rule.endpoint]:
+            # every rule that comes after this one, including ourself
+            # has a lower priority for the defaults.  We order the ones
+            # with the highest priority up for building.
+            if r is rule:
+                break
+            if r.provides_defaults_for(rule) and \
+               r.suitable_for(values, method):
+                values.update(r.defaults)
+                domain_part, path = r.build(values)
+                return self.make_redirect_url(
+                    path, query_args, domain_part=domain_part)
 
     def make_redirect_url(self, path_info, query_args=None, domain_part=None):
         """Creates a redirect URL.
